@@ -82,6 +82,12 @@
     (candidates . perl-utils:build-candidates)
     (action . perl-utils:build-action)))
 
+(defvar perl-utils:test-source
+  '((name . "Test")
+    (init . perl-utils:test-init)
+    (candidates-in-buffer)
+    (action . perl-utils:test-action)))
+
 (defun perl-utils:test-init ()
   (let* ((root-info (perl-utils:package-root-info))
          (rootdir (cdr root-info)))
@@ -103,12 +109,6 @@
 (defun perl-utils:test-action (file)
   (let ((default-directory (helm-attr 'root perl-utils:test-source)))
     (perl-utils:do-compile (perl-utils:test-command file))))
-
-(defvar perl-utils:test-source
-  '((name . "Test")
-    (init . perl-utils:test-init)
-    (candidates-in-buffer)
-    (action . perl-utils:test-action)))
 
 ;;;###autoload
 (defun perl-utils ()
