@@ -41,7 +41,6 @@
   :group 'perl-utils)
 
 (defun perl-utils:do-compile (cmd)
-  (setq tmstms default-directory)
   (let ((compilation-scroll-output perl-utils:auto-scroll))
     (compilation-start cmd t (lambda (x) "*perl utils compilation*"))))
 
