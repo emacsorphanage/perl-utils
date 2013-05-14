@@ -29,6 +29,8 @@
 (require 'helm)
 (require 'compile)
 (require 'ansi-color)
+(require 'deferred)
+(require 'man)
 
 (defgroup perl-utils nil
   "Perl utilities"
@@ -109,6 +111,64 @@
 (defun perl-utils:test-action (file)
   (let ((default-directory (helm-attr 'root perl-utils:test-source)))
     (perl-utils:do-compile (perl-utils:test-command file))))
+
+;;
+;; Document
+;;
+(defvar perl-utils:installed-modules nil)
+
+(defun perl-utils:setup-installed-module ()
+  (when (null perl-utils:installed-modules)
+    (deferred:$
+      (deferred:process-buffer
+        "perl" "-MExtUtils::Installed" "-le" "print for ExtUtils::Installed->new->modules")
+      (deferred:nextc it
+        (lambda (buf)
+          (with-current-buffer buf
+            (goto-char (point-min))
+            (setq perl-utils:installed-modules
+                  (loop with modules = nil
+                        while (not (eobp))
+                        collect
+                        (prog1
+                            (buffer-substring-no-properties
+                             (line-beginning-position) (line-end-position))
+                          (forward-line 1))))
+            (kill-buffer (current-buffer))))))))
+
+(defun perl-utils:view-document (module)
+  (let ((manual-program "perldoc"))
+   (Man-getpage-in-background module)))
+
+(defun perl-utils:view-source-code (module)
+  (let ((buffer (format "*perl utils source[%s]*" module)))
+    (with-current-buffer (get-buffer-create buffer)
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (let ((ret (call-process "perldoc" nil t nil "-m" module)))
+        (unless (zerop ret)
+          (error "Faild: perldoc -m %s" module))
+        (goto-char (point-min))
+        (cperl-mode)
+        (setq buffer-read-only t))
+      (display-buffer (current-buffer)))))
+
+(defvar perl-utils:perldoc-source
+  '((name . "Perldoc")
+    (candidates . perl-utils:installed-modules)
+    (action . (("View Document" . perl-utils:view-document)
+               ("View Source" . perl-utils:view-source-code)))))
+
+;;;###autoload
+(defun perl-utils:perldoc ()
+  (interactive)
+  (helm :sources '(perl-utils:perldoc-source)
+        :buffer "*perl utils*"))
+
+;;;###autoload
+(defun perl-utils:setup ()
+  (interactive)
+  (perl-utils:setup-installed-module))
 
 ;;;###autoload
 (defun perl-utils ()
